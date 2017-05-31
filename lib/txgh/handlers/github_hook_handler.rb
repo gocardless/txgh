@@ -98,7 +98,7 @@ module Txgh
         categories = serialize_categories(categories)
 
         if resource_exists
-          project.api.update_details(tx_resource, categories: categories)
+          p.api.update_details(tx_resource, categories: categories)
           project.api.update_content(tx_resource, content)
         else
           project.api.create(tx_resource, content, categories)
@@ -143,7 +143,27 @@ module Txgh
 
       # Build an index of known Tx resources, by source file
       def tx_resources_for(branch)
-        project.resources.each_with_object({}) do |resource, ret|
+        resources = if project.tx_config_remote
+          puts "*** LOADING CONFIG REMOTELY"
+          github_api = repo.api
+          tree = github_api.tree(repo.name, payload['head_commit']['id'])
+
+          branch_tx_config_file = tree['tree'].find do |file|
+            file.path == project.tx_config_remote
+          end
+
+          blob = github_api.blob(repo.name, branch_tx_config_file['sha'])
+          branch_tx_config = blob['encoding'] == 'utf-8' ? blob['content'] : Base64.decode64(blob['content'])
+          config = Txgh::TxConfig.load(branch_tx_config)
+          config.resources
+        else
+          puts "*** USING LOCAL CONFIG"
+          project.resources
+        end
+
+        puts resources.inspect
+
+        resources.each_with_object({}) do |resource, ret|
           logger.info('processing resource')
 
           # If we're processing by branch, create a branch resource. Otherwise,

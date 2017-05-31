@@ -28,6 +28,10 @@ module Txgh
       !(webhook_secret || '').empty?
     end
 
+    def tx_config_remote
+      config['tx_config_remote']
+    end
+
     def resource(slug, branch = nil)
       if branch
         TxBranchResource.find(self, slug, branch)
